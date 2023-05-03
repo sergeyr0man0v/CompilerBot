@@ -1,5 +1,7 @@
 +++++++++++++++++++++Compiler Bot++++++++++++++++++++++
 
+Telegram: @c0mpiler_bot
+
 Supported commands:
 1. /compile or /interpret (C++17 or Python3 code allowed). Will compile your code and return program output. 
     You can add input data in your message if you need.
