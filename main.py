@@ -80,6 +80,11 @@ def compiler(message, lang):
     if code == '':
         bot.send_message(message.chat.id, "There is nothing to compile")
     else:
+        ''' TODO: run commands from user with limited rights '''
+        if any(i in code for i in
+               ("os", "subprocess", "open", "shututil", "ls", "cd", "touch", "filesystem", "fstream")):
+            bot.send_message(message.chat.id, "Let's not")
+            return
         result = None
         if lang.lower() == 'python3':
             filename = 'awesome-solution.py'
@@ -120,6 +125,10 @@ def python_shell(message):
         if code == '':
             bot.send_message(message.chat.id, "There is nothing to compile")
         else:
+            ''' TODO: run commands from user with limited rights '''
+            if any(i in code for i in ("os", "subprocess", "open", "shututil", "ls", "cd", "touch")):
+                bot.send_message(message.chat.id, "Let's not")
+                return
             filename = 'awesome-solution.py'
             result = subprocess.run(f"cat << EOF > {filename} \n{code}\nEOF\n", shell=True,
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
