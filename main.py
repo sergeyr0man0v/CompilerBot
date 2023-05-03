@@ -23,7 +23,7 @@ def async_process(cmd):
     if res.poll() is None:
         os.killpg(os.getpgid(res.pid), signal.SIGTERM)
         return 'Too long for me', 'No errors'
-    elif res.poll == 0:
+    elif res.poll() == 0:
         return res.stdout.read(), res.stderr.read()
     else:
         return res.stderr.read(), res.stdout.read()
@@ -32,6 +32,16 @@ def async_process(cmd):
 @bot.message_handler(commands=['start', 'hello'], content_types=['text'])
 def send_welcome(message):
     bot.reply_to(message, "Hello")
+
+
+@bot.message_handler(commands=['help'], content_types=['text'])
+def help_cmd(message):
+    text = "Allowed commands:\n" \
+           "1) /compile or /interpret (C++17 or Python3 code allowed).\n\tWill compile your code and return program output.\n" \
+           "\tYou can add input data in your message if you need.\n" \
+           "2) /python-shell\n\tSomething similar to the classic python-shell\n" \
+           "3) /make-file\n\tWill make and return file with necessary extension"
+    bot.reply_to(message, text)
 
 
 @bot.message_handler(commands=['compile', 'interpret'], content_types=['text'])
