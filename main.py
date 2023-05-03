@@ -1,13 +1,32 @@
 import os
 import subprocess
 import telebot
+import signal
 from telebot import types
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 
 TOKEN = os.getenv('BOT_TOKEN')
 bot = telebot.TeleBot(TOKEN)
+
+
+def async_process(cmd):
+    start = time.time()
+    time.sleep(0.1)
+    res = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE, shell=True, encoding='utf-8', preexec_fn=os.setsid)
+    while time.time() - start < 4 and res.poll() is None:
+        print(time.time())
+        time.sleep(0.2)
+    if res.poll() is None:
+        os.killpg(os.getpgid(res.pid), signal.SIGTERM)
+        return 'Too long for me', 'No errors'
+    elif res.poll == 0:
+        return res.stdout.read(), res.stderr.read()
+    else:
+        return res.stderr.read(), res.stdout.read()
 
 
 @bot.message_handler(commands=['start', 'hello'], content_types=['text'])
@@ -53,16 +72,18 @@ def compiler(message, lang):
     else:
         result = None
         if lang.lower() == 'python3':
-            result = subprocess.run(f"cat << EOF > awesome-solution.py \n{code}\nEOF\n"
-                                    f'python3 awesome-solution.py {inp_data}', shell=True,
+            filename = 'awesome-solution.py'
+            result = subprocess.run(f"cat << EOF > {filename} \n{code}\nEOF\n", shell=True,
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-            subprocess.run('rm awesome-solution.py', shell=True)
+            result.stdout, result.stderr = async_process(f'python3 {filename} {inp_data}')
+            subprocess.run(f'rm {filename}', shell=True)
         elif lang.lower() == 'c++17':
-            result = subprocess.run(f"cat << EOF > awesome-solution.cpp \n{code}\nEOF\n"
-                                    f'g++ awesome-solution.cpp -o a.out &&'
-                                    f'./a.out << EOF \n{inp_data}\nEOF', shell=True,
+            filename = 'awesome-solution.cpp'
+            result = subprocess.run(f"cat << EOF > {filename} \n{code}\nEOF\n", shell=True,
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-            subprocess.run('rm awesome-solution.cpp', shell=True)
+            result.stdout, result.stderr = async_process(f'g++ awesome-solution.cpp -o a.out &&'
+                                                         f'./a.out << EOF \n{inp_data}\nEOF')
+            subprocess.run(f'rm {filename}', shell=True)
         text = ''
         if result.returncode == 0:
             text = result.stdout
@@ -89,10 +110,11 @@ def python_shell(message):
         if code == '':
             bot.send_message(message.chat.id, "There is nothing to compile")
         else:
-            result = subprocess.run(f"cat << EOF > awesome-solution.py \n{code}\nEOF\n"
-                                    f'python3 awesome-solution.py', shell=True,
+            filename = 'awesome-solution.py'
+            result = subprocess.run(f"cat << EOF > {filename} \n{code}\nEOF\n", shell=True,
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-            subprocess.run('rm awesome-solution.py', shell=True)
+            result.stdout, result.stderr = async_process(f'python3 {filename}')
+            subprocess.run(f'rm {filename}', shell=True)
             text = ''
             if result.returncode == 0:
                 text = result.stdout
@@ -159,14 +181,10 @@ def make_file(message, lang):
     subprocess.run(f'rm {filename}', shell=True)
 
 
-@bot.message_handler(content_types=['audio'])
-def echo_audio(message):
-    print(message)
-    bot.send_message(message.chat.id, message)
-
-
-"""@bot.message_handler(func=lambda msg: True)
+@bot.message_handler(func=lambda msg: True, content_types=['text'])
 def echo_all(message):
-    bot.reply_to(message, message.text)"""
+    bot.register_next_step_handler(message, make_file, 'txt')
+
 
 bot.infinity_polling()
+
